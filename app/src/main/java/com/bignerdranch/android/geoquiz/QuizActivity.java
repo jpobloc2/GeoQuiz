@@ -1,5 +1,7 @@
 package com.bignerdranch.android.geoquiz;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -7,8 +9,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-
-//import Question.java;
 
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
@@ -20,7 +20,9 @@ public class QuizActivity extends AppCompatActivity {
     private Button mFalseButton;
     private Button mNextButton;
     private Button mPreviousButton;
+    private Button mCheatButton;
     private TextView mQuestionTextView;
+    private final int REQUEST_CODE_CHEAT = 0;
 
     private Question[] mQuestionBank = new Question[]{
             new Question(R.string.question_oceans, true),
@@ -52,12 +54,18 @@ public class QuizActivity extends AppCompatActivity {
     private void checkAnswer(boolean userPressedTrue){
         boolean answerIsTrue = mQuestionBank[mCurrentIndex].isAnswerTrue();
         int messageResID = 0;
-        if (userPressedTrue == answerIsTrue) {
-            messageResID = R.string.correct_toast;
+
+        if (mQuestionBank[mCurrentIndex].isUserCheated()) {
+            messageResID = R.string.judgement_toast;
         } else {
-            messageResID = R.string.incorrect_toast;
+            if (userPressedTrue == answerIsTrue) {
+                messageResID = R.string.correct_toast;
+            } else {
+                messageResID = R.string.incorrect_toast;
+            }
         }
         Toast.makeText(this, messageResID, Toast.LENGTH_SHORT).show();
+
     }
 
     /**
@@ -114,11 +122,34 @@ public class QuizActivity extends AppCompatActivity {
             }
         });
 
+        mCheatButton = (Button) findViewById(R.id.cheat_button);
+        mCheatButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean answerIsTrue = mQuestionBank[mCurrentIndex].isAnswerTrue();
+                Intent i = CheatActivity.newIntent(QuizActivity.this, answerIsTrue);
+                startActivityForResult(i, REQUEST_CODE_CHEAT);
+            }
+        });
+
         updateQuestion();
 
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         mClient = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+        if (requestCode == REQUEST_CODE_CHEAT){
+            if (data == null){
+                return;
+            }
+            mQuestionBank[mCurrentIndex].setUserCheated(CheatActivity.wasAnswerShown(data));
+        }
     }
 
     @Override
